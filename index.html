@@ -156,6 +156,18 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
  .btns button{flex:1}
  .q.miss h3::after{display:block;content:"← 응답이 필요합니다"}
 }
+/* 제출 중 전체 화면 안내 */
+.overlay{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.overlay[hidden]{display:none}
+.ovbox{background:#fff;border:2px solid var(--navy);border-top-width:6px;max-width:560px;width:100%;padding:32px 28px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+.ovbox h2{font-size:24px;margin:16px 0 10px;color:var(--navy)}
+.ovbox .warnbig{font-size:19px;font-weight:700;color:var(--red);margin:8px 0}
+.ovbox p{font-size:15px;color:#333;margin:6px 0}
+.ovbox .elapsed{font-size:14px;color:var(--muted);margin-top:14px}
+.ring{width:44px;height:44px;border:5px solid #dde2ea;border-top-color:var(--navy);border-radius:50%;margin:0 auto;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.ring{animation-duration:3s}}
+.testhint{border:1px solid #e3b5b0;color:var(--red);font-size:14px;padding:7px 10px;margin:8px 0 0}
 @media print{.top .tools,.btns{display:none}}
 </style>
 </head>
@@ -173,6 +185,13 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
   <div class="btns"><button id="prev" type="button">이전</button><button id="next" type="button" class="primary">다음</button></div>
  </div>
  <div id="done" hidden tabindex="-1"></div>
+ <div id="overlay" class="overlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="ovTitle"><div class="ovbox">
+  <div class="ring" aria-hidden="true"></div>
+  <h2 id="ovTitle">응답을 접수하고 있습니다</h2>
+  <p class="warnbig">창을 닫거나 새로고침하지 마십시오.</p>
+  <p>접수에는 <strong>최대 1분 정도</strong> 걸릴 수 있습니다.<br>‘접수 완료’ 화면과 접수번호가 나올 때까지 기다려 주십시오.</p>
+  <p class="elapsed" id="ovElapsed">경과 0초</p>
+ </div></div>
 </main>
 <footer class="foot"><div class="in">발주기관 한국대학교육협의회 ｜ 연구수행 숭실대학교 연구진<br>응답자의 성명·개인 직급·연락처·서명은 수집하지 않으며, 응답 내용은 다른 응답자에게 공개하지 않습니다.</div></footer>
 <noscript><p class="in">이 설문에 응답하려면 브라우저에서 JavaScript를 허용해야 합니다.</p></noscript>
@@ -265,7 +284,7 @@ function textField(q){
    '<span class="cnt"><span id="cnt_'+q.id+'">'+v.length+'</span> / '+q.maxLength+'자</span></div></div>';
  }
  var isUrl=q.type==='url';
- return '<div class="textwrap"><input id="in_'+q.id+'" type="'+(isUrl?'url':'text')+'" data-field="'+q.id+'" maxlength="'+q.maxLength+'" value="'+esc(v)+'" autocomplete="off"'+(isUrl?' placeholder="https://"':' class="code"')+'></div>';
+ return '<div class="textwrap"><input id="in_'+q.id+'" type="'+(isUrl?'url':'text')+'" data-field="'+q.id+'" maxlength="'+q.maxLength+'" value="'+esc(v)+'" autocomplete="off"'+(isUrl?' placeholder="https://"':' class="code"'+(MODE==='test'?' placeholder="SSUTEST"':''))+'></div>';
 }
 function autoRule(q){if(q.type==='grid')return '각 행 1개 선택';if(q.type==='single')return '1개 선택';if(q.type==='multi')return q.max?'최대 '+q.max+'개 선택':'복수 선택';return '';}
 function titleHtml(q){
@@ -277,6 +296,7 @@ function question(q){
  if(skip(q.id))return '<div id="card_'+q.id+'" hidden></div>';
  var body=q.type==='grid'?gridTable(q):(q.type==='text'||q.type==='url')?textField(q):choiceList(q,q.id);
  if(q.id==='Q14'&&(answers.Q14||[]).indexOf('2')>=0)body+='<div class="confirm">'+optHtml('checkbox','q14confirm','','1','귀 대학이 친족관계 증빙자료 제출을 의무화한 경우임을 확인합니다.',q14Confirmed,false).replace('data-field=""','id="q14confirm"')+'</div>';
+ if(q.id==='institution'&&MODE==='test')body+='<p class="testhint">[시험 운영] 지금은 시험 기간입니다. 기관코드에 <b>SSUTEST</b>를 입력해 주십시오.</p>';
  if(q.id==='material_mode'&&answers.material_mode==='2')body+='<p class="msg">현재 이 설문에서는 파일을 받지 않습니다. 승인된 안전한 제출 경로가 별도로 안내된 경우에만 기존 파일을 최대 2개 제공하십시오. 경로가 안내되지 않았다면 파일 제공을 생략해도 됩니다.</p>';
  return '<section class="q" id="card_'+q.id+'"><h3>'+titleHtml(q)+'</h3>'+(q.help?'<div class="help">'+prose(q.help)+'</div>':'')+body+'</section>';
 }
@@ -369,6 +389,8 @@ function setFont(d){var sizes=[14,15,17,19],cur=1;try{cur=Number(localStorage.ge
 
 /* ── 제출 ── */
 function firstGap(){for(var i=0;i<pages.length-1;i++){if(unanswered(i).length)return i;}return -1;}
+var ovTimer=null;
+function overlay(on){var o=$('overlay');if(!o)return;clearInterval(ovTimer);o.hidden=!on;if(on){var t0=Date.now();$('ovElapsed').textContent='경과 0초';ovTimer=setInterval(function(){$('ovElapsed').textContent='경과 '+Math.round((Date.now()-t0)/1000)+'초';},1000);}}
 function freeze(v){document.querySelectorAll('#workspace input,#workspace textarea,#workspace button').forEach(function(el){el.disabled=v;});if(!v)render(false);}
 function uuid(){if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.floor(Math.random()*16);return (c==='x'?r:(r&3|8)).toString(16);});}
 function submit(){
@@ -377,12 +399,12 @@ function submit(){
   var u=['url1','url2'];for(var i=0;i<u.length;i++){if(answers[u[i]]&&!/^https?:\/\/[^\s\/@]+(?:\/[^\s]*)?$/i.test(answers[u[i]])){index=pages.findIndex(function(p){return p.ids.indexOf('url1')>=0;});render(true);$('status').innerHTML='<p class="msg err">공개 규정 주소는 http:// 또는 https://로 시작하는 주소로 입력하십시오.</p>';return;}}
   sync();pending={requestId:uuid(),version:schema.version,mode:MODE,startedAt:STARTED||new Date().toISOString(),answers:JSON.parse(JSON.stringify(answers)),q14MandatoryConfirmed:q14Confirmed};
  }
- busy=true;freeze(true);$('status').innerHTML='<p class="msg">응답을 접수하고 있습니다. 창을 닫지 마십시오.</p>';
+ busy=true;freeze(true);overlay(true);$('status').innerHTML='<p class="msg">응답을 접수하고 있습니다. 창을 닫지 마십시오.</p>';
  var settled=false;
  var timer=setTimeout(function(){if(!settled)retry('접수 확인이 지연되고 있습니다.');},45000);
- function retry(msg){if(completed)return;busy=false;$('next').disabled=false;$('next').textContent='다시 제출';$('status').innerHTML='<p class="msg err">'+esc(msg)+' [다시 제출]을 눌러 주십시오. 같은 응답이 두 번 저장되지는 않습니다.</p>';}
+ function retry(msg){overlay(false);if(completed)return;busy=false;$('next').disabled=false;$('next').textContent='다시 제출';$('status').innerHTML='<p class="msg err">'+esc(msg)+' [다시 제출]을 눌러 주십시오. 같은 응답이 두 번 저장되지는 않습니다.</p>';}
  function success(r){
-  settled=true;clearTimeout(timer);if(completed)return;
+  settled=true;clearTimeout(timer);overlay(false);if(completed)return;
   if(!r||!r.ok){if(r&&r.retryable===false){pending=null;busy=false;freeze(false);$('status').innerHTML='<p class="msg err">'+esc(r.message)+'</p>';}else retry(r&&r.message||'접수 결과를 확인하지 못했습니다.');return;}
   completed=true;busy=false;pending=null;$('workspace').hidden=true;$('done').hidden=false;
   $('done').innerHTML='<div class="secbar"><h2>'+(r.test?'시험응답 접수 완료':'응답 접수 완료')+'</h2></div>'+
