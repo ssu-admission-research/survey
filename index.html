@@ -78,6 +78,7 @@ h2{margin:0;font-size:19px;color:var(--navy)}h2:focus{outline:none}
 .grid td{cursor:pointer}
 .no{display:inline-block;min-width:2.2em;font-weight:700;color:var(--navy)}
 .rule{color:#222;font-size:14px;font-weight:700;white-space:nowrap;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.q.miss{background:#fff9e0;box-shadow:inset 4px 0 0 #e3b400;padding-left:14px;padding-right:10px;margin:0 -10px 0 -14px}
 .q.miss h3::after{content:"  ← 응답이 필요합니다";color:var(--red);font-size:13px;font-weight:400;white-space:nowrap}
 .help{font-size:13.5px;color:#555;margin:0 0 10px}
 .help p{margin:1px 0;padding-left:1.2em;text-indent:-1.2em}
@@ -115,6 +116,8 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
 .grid thead th{background:var(--th);font-weight:600;font-size:13px}
 .grid tbody th{text-align:left;font-weight:400;width:40%}
 .grid tr.group th{background:#fafafa;font-weight:600;font-size:13px}
+.grid tr.miss th,.grid tr.miss td{background:#fff3c4}
+.q.miss:has(table.grid){background:transparent}
 .grid tr.miss th::after{content:"  ← 응답 필요";color:var(--red);font-size:12.5px;white-space:nowrap}
 .grid td .opt{justify-content:center;margin:-6px -8px;padding:8px}
 .grid .cl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -165,6 +168,7 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
  .rv th,.rv td{display:block;width:auto;border-right:0}.rv th{border-bottom:0}
  .btns button{flex:1}
  .q.miss h3::after{display:block;content:"← 응답이 필요합니다"}
+ .q.miss{margin:0 -8px;padding-left:12px;padding-right:8px}
 }
 /* 제출 중 전체 화면 안내 */
 .overlay{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -211,7 +215,7 @@ var schema=SCHEMA,config={},MODE='test';
 var PREFILL=(function(){try{return String(new URLSearchParams(location.search).get('code')||'').slice(0,80);}catch(e){return '';}})();
 var byId={};schema.questions.forEach(function(q){byId[q.id]=q;});
 var pages=schema.pages.concat([{title:'제출 전 확인',ids:[],review:true}]);
-var answers={},index=0,busy=false,pending=null,completed=false,STARTED=null;
+var flagged={},answers={},index=0,busy=false,pending=null,completed=false,STARTED=null;
 function touch(){if(!STARTED)STARTED=new Date().toISOString();} /* 첫 응답 입력 시각 → 소요시간 계산용 */
 
 function $(id){return document.getElementById(id);}
@@ -350,19 +354,28 @@ function render(focus){
   }else h=(p.html?'<div class="lead">'+prose(p.html)+'</div>':'')+qs;
   if(p.after)h+='<div class="help after">'+prose(p.after)+'</div>';
  }
- $('body').innerHTML=h;
+ $('body').innerHTML=h;setTimeout(markMissing,0);
  $('prev').disabled=index===0||busy;$('next').textContent=p.review?'제출':'다음';$('next').disabled=busy;$('status').innerHTML='';
  if(focus){$('pageTitle').focus();window.scrollTo(0,0);}
 }
 function refreshOne(id){var old=$('card_'+id);if(old)old.outerHTML=question(byId[id]);}
-function refreshCards(){pages[index].ids.forEach(refreshOne);}
+function refreshCards(){pages[index].ids.forEach(refreshOne);markMissing();}
+/* 미응답 표시: [다음]을 한 번 누른 페이지에서만, 지금 남아 있는 미응답만 */
+function markMissing(){
+ document.querySelectorAll('#body .miss').forEach(function(el){el.classList.remove('miss');});
+ if(!flagged[index])return;
+ var left=unanswered(index);
+ left.forEach(function(m){var q=byId[m.qid],c=$('card_'+(q&&q.embedded?q.embedded:m.qid));if(c)c.classList.add('miss');var r=$('row_'+m.id);if(r)r.classList.add('miss');});
+ if(!left.length)$('status').innerHTML='';
+ else{var n=$('missCount');if(n)n.textContent=left.length;}
+}
 
 /* ── 입력 처리 ── */
 $('body').addEventListener('input',function(e){
  touch();var id=e.target.dataset.field;if(!id||e.target.type==='radio'||e.target.type==='checkbox')return;
  var had=hasValue(answers[id]);answers[id]=e.target.value;
  var c=$('cnt_'+id);if(c)c.textContent=e.target.value.length;
- var card=$('card_'+id);if(card&&hasValue(e.target.value))card.classList.remove('miss');
+ markMissing();
 });
 $('body').addEventListener('change',function(e){
  touch();var t=e.target;
@@ -386,7 +399,7 @@ $('body').addEventListener('change',function(e){
  var before=JSON.stringify(answers);sync();if(before!==JSON.stringify(answers))msg+=(msg?' ':'')+'조건이 바뀌어 해당하지 않는 후속 응답을 해제했습니다.';
  var val=t.value;refreshCards();
  var n=document.querySelector('input[data-field="'+id+'"][value="'+val+'"]');if(n)n.focus({preventScroll:true});
- $('status').innerHTML=msg?'<p class="msg">'+esc(msg)+'</p>':'';
+ if(msg)$('status').innerHTML='<p class="msg">'+esc(msg)+'</p>';else if(!flagged[index])$('status').innerHTML='';
 });
 document.addEventListener('click',function(e){
  var td=e.target.closest('.grid td');
@@ -402,8 +415,8 @@ $('next').onclick=function(){
  move(index+1);
 };
 function showMissing(miss){
- miss.forEach(function(m){var q=byId[m.qid],c=$('card_'+(q&&q.embedded?q.embedded:m.qid));if(c)c.classList.add('miss');var r=$('row_'+m.id);if(r)r.classList.add('miss');});
- $('status').innerHTML='<p class="msg">응답하지 않은 문항이 '+miss.length+'개 있습니다. <span style="color:var(--red)">← 응답이 필요합니다</span> 표시가 있는 문항에 응답해 주십시오. 답하기 어려운 문항은 ‘확인 곤란’ 또는 ‘응답 유보’를 선택해 주십시오.</p>';
+ flagged[index]=true;markMissing();
+ $('status').innerHTML='<p class="msg">응답하지 않은 문항이 <span id="missCount">'+miss.length+'</span>개 있습니다. <span style="color:var(--red)">← 응답이 필요합니다</span> 표시가 있는 문항에 응답해 주십시오. 답하기 어려운 문항은 ‘확인 곤란’ 또는 ‘응답 유보’를 선택해 주십시오.</p>';
  var fq=byId[miss[0].qid],first=$('row_'+miss[0].id)||$('card_'+(fq&&fq.embedded?fq.embedded:miss[0].qid));if(first&&first.scrollIntoView)first.scrollIntoView({block:'center'});
 }
 function move(i){if(busy||pending)return;index=Math.max(0,Math.min(pages.length-1,i));render(true);}
@@ -423,7 +436,7 @@ function submit(){
  busy=true;freeze(true);overlay(true);$('status').innerHTML='<p class="msg">응답을 접수하고 있습니다. 창을 닫지 마십시오.</p>';
  var settled=false;
  var timer=setTimeout(function(){if(!settled)retry('접수 확인이 지연되고 있습니다.');},45000);
- function retry(msg){overlay(false);if(completed)return;busy=false;$('next').disabled=false;$('next').textContent='다시 제출';$('status').innerHTML='<p class="msg err">'+esc(msg)+' [다시 제출]을 눌러 주십시오. 같은 응답이 두 번 저장되지는 않습니다.</p>';}
+ function retry(msg,why){overlay(false);if(completed)return;busy=false;$('next').disabled=false;$('next').textContent='다시 제출';$('status').innerHTML='<p class="msg err">'+esc(msg)+' [다시 제출]을 눌러 주십시오. 같은 응답이 두 번 저장되지는 않습니다.'+(why?'<br><span style="color:#777;font-size:12.5px">원인: '+esc(why)+'</span>':'')+'</p>';}
  function success(r){
   settled=true;clearTimeout(timer);overlay(false);if(completed)return;
   if(!r||!r.ok){if(r&&r.retryable===false){pending=null;busy=false;freeze(false);$('status').innerHTML='<p class="msg err">'+esc(r.message)+'</p>';}else retry(r&&r.message||'접수 결과를 확인하지 못했습니다.');return;}
@@ -437,8 +450,10 @@ function submit(){
  }
  var ctrl=window.AbortController?new AbortController():null;if(ctrl)setTimeout(function(){ctrl.abort();},44000);
  fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(pending),redirect:'follow',signal:ctrl?ctrl.signal:undefined})
-  .then(function(r){return r.json();}).then(success)
-  .catch(function(){settled=true;clearTimeout(timer);retry('연결 문제로 접수 결과를 확인하지 못했습니다.');});
+  .then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){var m=/<title>([^<]*)<\/title>/i.exec(t);throw {why:'서버가 오류 페이지를 돌려주었습니다 (HTTP '+r.status+(m?', '+m[1].trim().slice(0,60):'')+')'};}});}).then(success)
+  .catch(function(err){if(settled)return;settled=true;clearTimeout(timer);
+   var why=err&&err.why?err.why:(err&&err.name==='AbortError')?'45초 안에 서버 응답이 없었습니다':'서버에 연결하지 못했습니다'+(navigator.onLine===false?' (인터넷 연결 끊김)':'');
+   retry('연결 문제로 접수 결과를 확인하지 못했습니다.',why);});
 }
 window.addEventListener('beforeunload',function(e){if(!completed&&(anyAnswer()||pending)){e.preventDefault();e.returnValue='';}});
 
