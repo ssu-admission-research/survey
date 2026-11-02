@@ -70,10 +70,12 @@ h2{margin:0;font-size:19px;color:var(--navy)}h2:focus{outline:none}
 .q h4.sub{margin:10px 0 6px;font-size:14.5px;font-weight:700;color:#333}
 .q.cont{padding-top:6px;border-top:0;margin-top:-6px}
 .q.cont h3{font-size:14.5px;color:#333}
-.q.skipped{padding:12px 0}
-.q.skipped h3{color:#999;font-weight:400}
-.q.skipped .help{margin:0}
 .exnote{font-size:12.5px;color:#777;margin:6px 0 0}
+.kind{margin:0 0 10px}.kind .kindt{margin:0 0 2px;font-size:14px;font-weight:700}.kind .opts{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.kind.off{opacity:.45}
+.keyline{display:flex;flex-wrap:wrap;gap:4px 22px;font-size:13.5px;color:#444;margin:0 0 10px;padding:8px 12px;background:var(--th);border:1px solid var(--line2)}
+.keyline b{color:#222;font-weight:700;margin-left:2px}
+.grid td{cursor:pointer}
 .no{display:inline-block;min-width:2.2em;font-weight:700;color:var(--navy)}
 .rule{color:#222;font-size:14px;font-weight:700;white-space:nowrap;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 .q.miss h3::after{content:"  ← 응답이 필요합니다";color:var(--red);font-size:13px;font-weight:400;white-space:nowrap}
@@ -176,7 +178,7 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.ring{animation-duration:3s}}
 .testhint{border:1px solid #e3b5b0;color:var(--red);font-size:14px;padding:7px 10px;margin:8px 0 0}
-@media print{.top .tools,.btns{display:none}}
+
 </style>
 </head>
 <body>
@@ -216,7 +218,7 @@ function $(id){return document.getElementById(id);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function mark(h){return String(h||'').replace(/~~([\s\S]*?)~~/g,'<del>$1</del>').replace(/\+\+([\s\S]*?)\+\+/g,'<ins>$1</ins>');}
 function plain(t){return String(t||'').replace(/~~[\s\S]*?~~/g,'').replace(/\+\+([\s\S]*?)\+\+/g,'$1').replace(/__/g,'');}
-function prose(s){return mark((s||'').replace(/\{\{([A-Z_]+)\}\}/g,function(_,k){return esc(config[k]||'[승인 후 기재]');}));}
+function prose(s){return mark((s||'').replace(/\{\{([A-Z_]+)\}\}/g,function(_,k){if(k==='INSTITUTION')return esc(answers.institution||'');return esc(config[k]||'[승인 후 기재]');}));}
 function rowLabel(r){return (r.no?r.no+' ':'')+r.label.split(' / ').pop();}
 function fieldsOf(q){return q.rows?q.rows.map(function(r){return {id:r.id,label:rowLabel(r)};}):[{id:q.id,label:''}];}
 function hasValue(v){return Array.isArray(v)?v.length>0:String(v==null?'':v).trim()!=='';}
@@ -225,8 +227,8 @@ function skip(id){
  if(id==='Q7')return answers.Q1_1==='2'||answers.Q1_1==='3';          /* 1-1 준비·계획만 / 해당 없음 → Q8로 */
  if(id==='Q16')return answers.Q1_1==='3';                              /* 1-1 해당 없음 → Q17로 */
  if(id==='Q12_2'||id==='Q13')return answers.Q12_1==='4'||answers.Q12_1==='5'; /* 12-1 ④·⑤ → Q14로 */
- if(id==='F1_kind')return answers.F1_none==='1'||!hasValue(answers.F1);
- if(id==='F2_kind')return answers.F2_none==='1'||!hasValue(answers.F2);
+ if(id==='F1_kind')return answers.F1_none==='1';
+ if(id==='F2_kind')return answers.F2_none==='1';
  return false;
 }
 function optional(id){
@@ -263,11 +265,11 @@ function optHtml(type,name,field,value,label,checked,disabled,textClass){
  var s=splitNo(label);
  return '<label class="opt"><input class="vh" type="'+type+'" name="'+name+'" data-field="'+field+'" value="'+value+'"'+(checked?' checked':'')+(disabled?' disabled':'')+'>'+marker(type,s.n)+'<span class="'+(textClass||'tx')+'">'+esc(s.t)+'</span></label>';
 }
-function choiceList(q,id){
+function choiceList(q,id,disAll){
  var type=q.type==='multi'?'checkbox':'radio',val=answers[id];
  return '<ul class="opts">'+q.options.map(function(o){
   var checked=Array.isArray(val)?val.indexOf(o.value)>=0:val===o.value;
-  var dis=q.requires&&o.value===q.requires.value&&answers[q.requires.field]!==q.requires.equals;
+  var dis=disAll||(q.requires&&o.value===q.requires.value&&answers[q.requires.field]!==q.requires.equals);
   return '<li>'+optHtml(type,id,id,o.value,o.label,checked,dis)+'</li>';
  }).join('')+'</ul>';
 }
@@ -286,8 +288,9 @@ function gridTable(q){
 function textField(q){
  var v=answers[q.id]||'';
  if(q.id==='F1'||q.id==='F2'){
-  var none=answers[q.id+'_none']==='1';
-  return '<div class="textwrap"><textarea id="in_'+q.id+'" data-field="'+q.id+'" maxlength="'+q.maxLength+'" rows="6"'+(none?' disabled':'')+'>'+esc(v)+'</textarea>'+
+  var none=answers[q.id+'_none']==='1',kq=byId[q.id+'_kind'];
+  var kind=kq?'<div class="kind'+(none?' off':'')+'"><p class="kindt">'+titleHtml(kq)+'</p>'+choiceList(kq,kq.id,none)+'</div>':'';
+  return kind+'<div class="textwrap"><textarea id="in_'+q.id+'" data-field="'+q.id+'" maxlength="'+q.maxLength+'" rows="6"'+(none?' disabled':'')+'>'+esc(v)+'</textarea>'+
    '<div class="textfoot"><label class="opt"><input class="vh" type="checkbox" data-flag="'+q.id+'_none"'+(none?' checked':'')+'>'+marker('checkbox','')+'<span class="tx">특별히 적을 내용 없음</span></label>'+
    '<span class="cnt"><span id="cnt_'+q.id+'">'+v.length+'</span> / '+q.maxLength+'자</span></div></div>';
  }
@@ -312,10 +315,8 @@ function exNote(q){
 }
 function question(q){
  var cls='q'+(q.cont?' cont':'');
- if(skip(q.id)){
-  if(!q.skipNote)return '<div id="card_'+q.id+'" hidden></div>';
-  return '<section class="'+cls+' skipped" id="card_'+q.id+'"><h3>'+esc(splitRule(q.title).t)+'</h3><div class="help"><p>'+esc(q.skipNote)+'</p></div></section>';
- }
+ if(q.embedded)return '';                                   /* 다른 문항 카드 안에 그려짐 (F1_kind·F2_kind) */
+ if(skip(q.id))return '<div id="card_'+q.id+'" hidden></div>';
  var body=q.type==='grid'?gridTable(q):(q.type==='text'||q.type==='url')?textField(q):choiceList(q,q.id);
  if(q.id==='institution'&&MODE==='test')body+='<p class="testhint">[시험 운영] 지금은 시험 기간입니다. 기관코드에 <b>SSUTEST</b>를 입력해 주십시오.</p>';
  return '<section class="'+cls+'" id="card_'+q.id+'"><h3>'+titleHtml(q)+'</h3>'+(q.help?'<div class="help">'+prose(q.help)+'</div>':'')+(q.sub?subHtml(q):'')+body+exNote(q)+(q.after?'<div class="help after">'+prose(q.after)+'</div>':'')+'</section>';
@@ -361,7 +362,6 @@ $('body').addEventListener('input',function(e){
  touch();var id=e.target.dataset.field;if(!id||e.target.type==='radio'||e.target.type==='checkbox')return;
  var had=hasValue(answers[id]);answers[id]=e.target.value;
  var c=$('cnt_'+id);if(c)c.textContent=e.target.value.length;
- if((id==='F1'||id==='F2')&&had!==hasValue(e.target.value)){sync();refreshOne(id+'_kind');}
  var card=$('card_'+id);if(card&&hasValue(e.target.value))card.classList.remove('miss');
 });
 $('body').addEventListener('change',function(e){
@@ -370,7 +370,7 @@ $('body').addEventListener('change',function(e){
   var f=t.dataset.flag,base=f.replace('_none','');
   if(t.checked){answers[f]='1';if(hasValue(answers[base])&&!confirm('작성한 내용을 지우고 ‘특별히 적을 내용 없음’으로 응답하시겠습니까?')){t.checked=false;delete answers[f];return;}}
   else delete answers[f];
-  sync();refreshOne(base);refreshOne(base+'_kind');return;
+  sync();refreshOne(base);return;
  }
  var id=t.dataset.field;if(!id||(t.type!=='radio'&&t.type!=='checkbox'))return;
  var q=byId[id]||schema.questions.filter(function(q){return (q.rows||[]).some(function(r){return r.id===id;});})[0];var msg='';
@@ -389,6 +389,8 @@ $('body').addEventListener('change',function(e){
  $('status').innerHTML=msg?'<p class="msg">'+esc(msg)+'</p>':'';
 });
 document.addEventListener('click',function(e){
+ var td=e.target.closest('.grid td');
+ if(td&&!e.target.closest('label')){var r=td.querySelector('input');if(r&&!r.disabled&&!r.checked){r.checked=true;r.dispatchEvent(new Event('change',{bubbles:true}));}return;}
  var b=e.target.closest('button');if(!b)return;
  if(b.dataset.go!==undefined){move(Number(b.dataset.go));return;}
  if(b.dataset.font!==undefined){setFont(Number(b.dataset.font));return;}
@@ -400,9 +402,9 @@ $('next').onclick=function(){
  move(index+1);
 };
 function showMissing(miss){
- miss.forEach(function(m){var c=$('card_'+m.qid);if(c)c.classList.add('miss');var r=$('row_'+m.id);if(r)r.classList.add('miss');});
+ miss.forEach(function(m){var q=byId[m.qid],c=$('card_'+(q&&q.embedded?q.embedded:m.qid));if(c)c.classList.add('miss');var r=$('row_'+m.id);if(r)r.classList.add('miss');});
  $('status').innerHTML='<p class="msg">응답하지 않은 문항이 '+miss.length+'개 있습니다. <span style="color:var(--red)">← 응답이 필요합니다</span> 표시가 있는 문항에 응답해 주십시오. 답하기 어려운 문항은 ‘확인 곤란’ 또는 ‘응답 유보’를 선택해 주십시오.</p>';
- var first=$('row_'+miss[0].id)||$('card_'+miss[0].qid);if(first&&first.scrollIntoView)first.scrollIntoView({block:'center'});
+ var fq=byId[miss[0].qid],first=$('row_'+miss[0].id)||$('card_'+(fq&&fq.embedded?fq.embedded:miss[0].qid));if(first&&first.scrollIntoView)first.scrollIntoView({block:'center'});
 }
 function move(i){if(busy||pending)return;index=Math.max(0,Math.min(pages.length-1,i));render(true);}
 function setFont(d){var sizes=[14,15,17,19],cur=1;try{cur=Number(localStorage.getItem('survey_font')||1);}catch(e){}cur=Math.max(0,Math.min(sizes.length-1,cur+d));document.documentElement.style.fontSize=sizes[cur]+'px';try{localStorage.setItem('survey_font',cur);}catch(e){}}
@@ -428,8 +430,9 @@ function submit(){
   completed=true;busy=false;pending=null;$('workspace').hidden=true;$('done').hidden=false;
   $('done').innerHTML='<div class="secbar"><h2>'+(r.test?'시험응답 접수 완료':'응답 접수 완료')+'</h2></div>'+
    '<table class="info-table"><tr><th>접수번호</th><td>'+esc(r.receipt)+'</td></tr><tr><th>접수일시</th><td>'+esc(new Date().toLocaleString('ko-KR'))+'</td></tr></table>'+
-   '<p>응답이 정상적으로 접수되었습니다. 접수번호는 문의 시 필요할 수 있으니 기록해 두시기 바랍니다.</p><p>조사에 협조해 주셔서 감사합니다. 이 창을 닫으셔도 됩니다.</p>'+
-   '<div class="btns"><button type="button" onclick="window.print()">인쇄</button></div>';
+   '<p>응답이 정상적으로 접수되었습니다. 접수번호는 문의 시 필요할 수 있으니 기록해 두시기 바랍니다.</p><p>조사에 협조해 주셔서 감사합니다.</p>'+
+   '<div class="btns"><button type="button" class="primary" id="closeBtn">닫기</button></div>';
+  $('closeBtn').onclick=function(){window.close();setTimeout(function(){if(!window.closed)$('closeBtn').outerHTML='<p class="msg">브라우저 탭을 닫아 주십시오.</p>';},300);};
   $('done').focus();window.scrollTo(0,0);
  }
  var ctrl=window.AbortController?new AbortController():null;if(ctrl)setTimeout(function(){ctrl.abort();},44000);
