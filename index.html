@@ -187,7 +187,7 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
 </head>
 <body>
 <a class="skip" href="#content">본문 바로가기</a>
-<div class="top"><div class="in"><span>한국대학교육협의회 · 숭실대학교 연구진</span><span class="tools">글자크기<button type="button" data-font="-1" aria-label="글자 작게">−</button><button type="button" data-font="1" aria-label="글자 크게">＋</button></span></div></div>
+<div class="top"><div class="in"><span>한국대학교육협의회</span><span class="tools">글자크기<button type="button" data-font="-1" aria-label="글자 작게">−</button><button type="button" data-font="1" aria-label="글자 크게">＋</button></span></div></div>
 <header class="head"><div class="in"><h1>대학입학전형 회피·배제 운영방식 및 개선 요구 조사</h1><p id="versionLine"></p></div></header>
 <main id="content" class="in">
  <p id="loading" class="msg">설문 정보를 불러오는 중입니다.</p>
@@ -207,7 +207,7 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
   <p class="elapsed" id="ovElapsed">경과 0초</p>
  </div></div>
 </main>
-<footer class="foot"><div class="in">발주기관 한국대학교육협의회 ｜ 연구수행 숭실대학교 연구진<br>응답자의 성명·개인 직급·연락처·서명은 수집하지 않으며, 응답 내용은 다른 응답자에게 공개하지 않습니다.</div></footer>
+<footer class="foot"><div class="in">발주기관 한국대학교육협의회<br>응답자의 성명·개인 직급·연락처·서명은 수집하지 않으며, 응답 내용은 다른 응답자에게 공개하지 않습니다.</div></footer>
 <noscript><p class="in">이 설문에 응답하려면 브라우저에서 JavaScript를 허용해야 합니다.</p></noscript>
 <script>
 'use strict';
@@ -299,7 +299,7 @@ function textField(q){
    '<span class="cnt"><span id="cnt_'+q.id+'">'+v.length+'</span> / '+q.maxLength+'자</span></div></div>';
  }
  var isUrl=q.type==='url';
- return '<div class="textwrap"><input id="in_'+q.id+'" type="'+(isUrl?'url':'text')+'" data-field="'+q.id+'" maxlength="'+q.maxLength+'" value="'+esc(v)+'" autocomplete="off"'+(isUrl?' placeholder="https://"':' class="code"'+(MODE==='test'?' placeholder="SSUTEST"':''))+'></div>';
+ return '<div class="textwrap"><input id="in_'+q.id+'" type="'+(isUrl?'url':'text')+'" data-field="'+q.id+'" maxlength="'+q.maxLength+'" value="'+esc(v)+'" autocomplete="off"'+(isUrl?' placeholder="https://"':' class="code" placeholder="예: 숭실대학교"')+'></div>';
 }
 function autoRule(q){if(q.type==='grid')return '항목별 단일선택';if(q.type==='single')return '단일선택';if(q.type==='multi')return q.max?'최대 '+q.max+'개':'복수선택';return '';}
 function splitRule(t){var m=/\s*\[([^\[\]]+)\]$/.exec(t);return m?{t:t.slice(0,m.index),rule:m[1]}:{t:t,rule:''};}
@@ -322,7 +322,7 @@ function question(q){
  if(q.embedded)return '';                                   /* 다른 문항 카드 안에 그려짐 (F1_kind·F2_kind) */
  if(skip(q.id))return '<div id="card_'+q.id+'" hidden></div>';
  var body=q.type==='grid'?gridTable(q):(q.type==='text'||q.type==='url')?textField(q):choiceList(q,q.id);
- if(q.id==='institution'&&MODE==='test')body+='<p class="testhint">[시험 운영] 지금은 시험 기간입니다. 기관코드에 <b>SSUTEST</b>를 입력해 주십시오.</p>';
+ if(q.id==='institution'&&MODE==='test')body+='<p class="testhint">[시험 운영] 시험 응답은 대학명 대신 <b>SSUTEST</b>를 입력해도 됩니다.</p>';
  return '<section class="'+cls+'" id="card_'+q.id+'"><h3>'+titleHtml(q)+'</h3>'+(q.help?'<div class="help">'+prose(q.help)+'</div>':'')+(q.sub?subHtml(q):'')+body+exNote(q)+(q.after?'<div class="help after">'+prose(q.after)+'</div>':'')+'</section>';
 }
 function review(){
@@ -373,6 +373,7 @@ function markMissing(){
 /* ── 입력 처리 ── */
 $('body').addEventListener('input',function(e){
  touch();var id=e.target.dataset.field;if(!id||e.target.type==='radio'||e.target.type==='checkbox')return;
+ if(id==='institution'&&/\s/.test(e.target.value)){var pos=e.target.selectionStart-(e.target.value.slice(0,e.target.selectionStart).match(/\s/g)||[]).length;e.target.value=e.target.value.replace(/\s+/g,'');try{e.target.setSelectionRange(pos,pos);}catch(x){}}
  var had=hasValue(answers[id]);answers[id]=e.target.value;
  var c=$('cnt_'+id);if(c)c.textContent=e.target.value.length;
  markMissing();
@@ -467,7 +468,7 @@ function start(st){
  if(!st.ok){fail(st.message||'현재 설문을 접수하지 않습니다.');return;}
  document.body.classList.toggle('marks',MODE==='test');
  $('loading').hidden=true;$('workspace').hidden=false;$('testLine').hidden=MODE!=='test';
- $('versionLine').textContent=MODE==='test'?'대교협 의견 반영본 v0.9.4 · 대교협 승인 전':'';
+ $('versionLine').textContent='';
  if(PREFILL)answers.institution=PREFILL;
  render(false);
 }
