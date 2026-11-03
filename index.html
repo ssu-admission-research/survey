@@ -181,6 +181,13 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
 .ring{width:44px;height:44px;border:5px solid #dde2ea;border-top-color:var(--navy);border-radius:50%;margin:0 auto;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.ring{animation-duration:3s}}
+.unierr{color:var(--red);font-size:13.5px;margin:6px 0 0}.unierr:empty{display:none}
+.textwrap{position:relative}
+.unibox{position:absolute;z-index:20;left:0;top:44px;width:280px;max-width:100%;margin:0;padding:0;list-style:none;background:#fff;border:1px solid #8b929c;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.unibox li{padding:8px 10px;cursor:pointer;font-size:14.5px}
+.unibox li:hover,.unibox li.on{background:#eceef1}
+.unibox li b{color:var(--navy)}
+.uninote{font-size:12.5px;color:#777;margin:6px 0 0}
 .testhint{border:1px solid #e3b5b0;color:var(--red);font-size:14px;padding:7px 10px;margin:8px 0 0}
 
 </style>
@@ -260,6 +267,31 @@ function unanswered(i){
  });
  return out;
 }
+/* 대학명: 목록에서 검색해 고르거나, 목록에 없으면 직접 입력('대학'·'학교'·'과학기술원'이 들어간 이름만) */
+var UNIS="가야대학교 가천대학교 가톨릭관동대학교 가톨릭꽃동네대학교 가톨릭대학교 감리교신학대학교 강남대학교 강서대학교 강원대학교 건국대학교 건양대학교 경기대학교 경남대학교 경동대학교 경북대학교 경상국립대학교 경성대학교 경운대학교 경인교육대학교 경일대학교 경찰대학 경희대학교 계명대학교 고려대학교 고신대학교 공군사관학교 공주교육대학교 광신대학교 광운대학교 광주가톨릭대학교 광주교육대학교 광주대학교 광주여자대학교 국군간호사관학교 국립경국대학교 국립공주대학교 국립군산대학교 국립금오공과대학교 국립목포대학교 국립목포해양대학교 국립부경대학교 국립순천대학교 국립창원대학교 국립한국교통대학교 국립한국해양대학교 국립한밭대학교 국민대학교 극동대학교 금강대학교 김천대학교 나사렛대학교 남부대학교 남서울대학교 단국대학교 대구가톨릭대학교 대구교육대학교 대구대학교 대구예술대학교 대구한의대학교 대신대학교 대전가톨릭대학교 대전대학교 대전신학대학교 대진대학교 덕성여자대학교 동국대학교 동덕여자대학교 동명대학교 동서대학교 동신대학교 동아대학교 동양대학교 동의대학교 루터대학교 명지대학교 목원대학교 목포가톨릭대학교 배재대학교 백석대학교 부산가톨릭대학교 부산교육대학교 부산대학교 부산외국어대학교 부산장신대학교 삼육대학교 상명대학교 상지대학교 서강대학교 서경대학교 서울과학기술대학교 서울교육대학교 서울기독대학교 서울대학교 서울시립대학교 서울신학대학교 서울여자대학교 서울장신대학교 서울한영대학교 서원대학교 선문대학교 성결대학교 성공회대학교 성균관대학교 성신여자대학교 세명대학교 세종대학교 세한대학교 송원대학교 수원가톨릭대학교 수원대학교 숙명여자대학교 순천향대학교 숭실대학교 신경주대학교 신라대학교 신한대학교 아신대학교 아주대학교 안양대학교 연세대학교 영남대학교 영남신학대학교 영산대학교 영산선학대학교 예수대학교 예원예술대학교 용인대학교 우석대학교 우송대학교 울산대학교 원광대학교 위덕대학교 유원대학교 육군사관학교 을지대학교 이화여자대학교 인제대학교 인천가톨릭대학교 인천대학교 인하대학교 장로회신학대학교 전남대학교 전북대학교 전주교육대학교 전주대학교 제주국제대학교 제주대학교 조선대학교 중부대학교 중앙대학교 중앙승가대학교 중원대학교 진주교육대학교 차의과학대학교 창신대학교 청운대학교 청주교육대학교 청주대학교 초당대학교 총신대학교 추계예술대학교 춘천교육대학교 충남대학교 충북대학교 칼빈대학교 평택대학교 포항공과대학교 한경국립대학교 한국공학대학교 한국교원대학교 한국기술교육대학교 한국방송통신대학교 한국성서대학교 한국예술종합학교 한국외국어대학교 한국전통문화대학교 한국체육대학교 한국침례신학대학교 한국항공대학교 한남대학교 한동대학교 한라대학교 한림대학교 한서대학교 한성대학교 한세대학교 한신대학교 한양대학교 한일장신대학교 해군사관학교 협성대학교 호남대학교 호남신학대학교 호서대학교 호원대학교 홍익대학교 화성의과학대학교".split(' ');
+function uniMatches(v){v=String(v||'').replace(/\s+/g,'');if(!v)return [];
+ var a=[],b=[];UNIS.forEach(function(u){var i=u.indexOf(v);if(i===0)a.push(u);else if(i>0)b.push(u);});return a.concat(b).slice(0,8);}
+function uniError(v){
+ v=String(v||'').replace(/\s+/g,'');if(!v)return '';
+ if(MODE==='test'&&v==='SSUTEST')return '';
+ if(UNIS.indexOf(v)>=0)return '';
+ return (/^[가-힣A-Za-z0-9()·]{2,40}$/.test(v)&&/(대학|학교|과학기술원)/.test(v))?'':'대학명을 확인해 주십시오. 목록에서 고르거나, 목록에 없으면 ‘대학교’까지 붙여 정식 명칭을 입력합니다. (예: 숭실대학교)';
+}
+var uniSel=-1;
+function uniShow(v){var box=$('uniBox'),inp=$('in_institution');if(!box)return;var m=uniMatches(v);uniSel=-1;
+ if(!m.length||(m.length===1&&m[0]===String(v).replace(/\s+/g,''))){box.hidden=true;inp.setAttribute('aria-expanded','false');return;}
+ var key=String(v).replace(/\s+/g,'');
+ box.innerHTML=m.map(function(u,i){var j=u.indexOf(key);return '<li role="option" data-uni="'+esc(u)+'">'+esc(u.slice(0,j))+'<b>'+esc(u.slice(j,j+key.length))+'</b>'+esc(u.slice(j+key.length))+'</li>';}).join('');
+ box.hidden=false;inp.setAttribute('aria-expanded','true');}
+function uniPick(u){var inp=$('in_institution');inp.value=u;answers.institution=u;$('uniBox').hidden=true;inp.setAttribute('aria-expanded','false');
+ var ue=$('uniErr');if(ue)ue.textContent='';var cc=$('card_institution');if(cc)cc.classList.remove('miss');markMissing();}
+document.addEventListener('mousedown',function(e){var li=e.target.closest('#uniBox li');if(li){e.preventDefault();uniPick(li.getAttribute('data-uni'));return;}
+ var box=$('uniBox');if(box&&!e.target.closest('#card_institution'))box.hidden=true;});
+document.addEventListener('keydown',function(e){if(!e.target||e.target.id!=='in_institution')return;var box=$('uniBox');if(!box||box.hidden)return;
+ var items=box.querySelectorAll('li');if(!items.length)return;
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();uniSel=(uniSel+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items.forEach(function(li,i){li.classList.toggle('on',i===uniSel);});}
+ else if(e.key==='Enter'){e.preventDefault();uniPick(items[uniSel<0?0:uniSel].getAttribute('data-uni'));}
+ else if(e.key==='Escape'){box.hidden=true;}});
 function anyAnswer(){return Object.keys(answers).some(function(k){return k!=='institution'&&hasValue(answers[k]);});}
 
 /* ── 보기 그리기: 번호 표시를 눌러 선택 ── */
@@ -299,7 +331,8 @@ function textField(q){
    '<span class="cnt"><span id="cnt_'+q.id+'">'+v.length+'</span> / '+q.maxLength+'자</span></div></div>';
  }
  var isUrl=q.type==='url';
- return '<div class="textwrap"><input id="in_'+q.id+'" type="'+(isUrl?'url':'text')+'" data-field="'+q.id+'" maxlength="'+q.maxLength+'" value="'+esc(v)+'" autocomplete="off"'+(isUrl?' placeholder="https://"':' class="code" placeholder="예: 숭실대학교"')+'></div>';
+ return '<div class="textwrap"><input id="in_'+q.id+'" type="'+(isUrl?'url':'text')+'" data-field="'+q.id+'" maxlength="'+q.maxLength+'" value="'+esc(v)+'" autocomplete="off"'+(isUrl?' placeholder="https://"':' class="code" placeholder="예: 숭실"'+(q.id==='institution'?' role="combobox" aria-autocomplete="list" aria-controls="uniBox" aria-expanded="false"':''))+'>'+
+  (q.id==='institution'?'<ul class="unibox" id="uniBox" role="listbox" hidden></ul><p class="uninote">학교 이름 일부(예: 숭실)를 입력하면 목록이 나옵니다. 목록에 없거나 캠퍼스를 구분해야 하면 정식 명칭을 직접 입력해 주십시오. (예: 한양대학교ERICA)</p><p class="unierr" id="uniErr"></p>':'')+'</div>';
 }
 function autoRule(q){if(q.type==='grid')return '항목별 단일선택';if(q.type==='single')return '단일선택';if(q.type==='multi')return q.max?'최대 '+q.max+'개':'복수선택';return '';}
 function splitRule(t){var m=/\s*\[([^\[\]]+)\]$/.exec(t);return m?{t:t.slice(0,m.index),rule:m[1]}:{t:t,rule:''};}
@@ -377,6 +410,7 @@ $('body').addEventListener('input',function(e){
  var had=hasValue(answers[id]);answers[id]=e.target.value;
  var c=$('cnt_'+id);if(c)c.textContent=e.target.value.length;
  markMissing();
+ if(id==='institution'){uniShow(e.target.value);var ue=$('uniErr');if(ue&&!uniError(e.target.value)){ue.textContent='';var cc=$('card_institution');if(cc)cc.classList.remove('miss');}}
 });
 $('body').addEventListener('change',function(e){
  touch();var t=e.target;
@@ -413,6 +447,7 @@ $('prev').onclick=function(){move(index-1);};
 $('next').onclick=function(){
  if(busy)return;if(index===pages.length-1){submit();return;}
  var miss=unanswered(index);if(miss.length){showMissing(miss);return;}
+ if(pages[index].ids.indexOf('institution')>=0){var ue=uniError(answers.institution);if(ue){$('uniErr').textContent=ue;var c=$('card_institution');if(c)c.classList.add('miss');$('in_institution').focus();return;}}
  move(index+1);
 };
 function showMissing(miss){
