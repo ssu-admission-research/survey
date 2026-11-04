@@ -71,6 +71,8 @@ h2{margin:0;font-size:19px;color:var(--navy)}h2:focus{outline:none}
 .q.cont{padding-top:6px;border-top:0;margin-top:-6px}
 .q.cont h3{font-size:14.5px;color:#333}
 .exnote{font-size:12.5px;color:#777;margin:6px 0 0}
+.law{border:1px solid var(--line);background:#fafbfc;padding:10px 14px;margin:4px 0 12px;font-size:13.5px;color:#333;line-height:1.7}
+.law p{margin:4px 0}.law .lawt{font-weight:700;color:var(--navy)}
 .kind{margin:0 0 10px}.kind .kindt{margin:0 0 2px;font-size:14px;font-weight:700}.kind .opts{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .kind.off{opacity:.45}
 .keyline{display:flex;flex-wrap:wrap;gap:4px 22px;font-size:13.5px;color:#444;margin:0 0 10px;padding:8px 12px;background:var(--th);border:1px solid var(--line2)}
@@ -237,7 +239,7 @@ function hasValue(v){return Array.isArray(v)?v.length>0:String(v==null?'':v).tri
 function skip(id){
  if(id==='Q7')return answers.Q1_1==='2'||answers.Q1_1==='3';          /* 1-1 준비·계획만 / 해당 없음 → Q8로 */
  if(id==='Q16')return answers.Q1_1==='3';                              /* 1-1 해당 없음 → Q17로 */
- if(id==='Q12_2'||id==='Q13')return ['4','5','6','7'].indexOf(answers.Q12_1)>=0; /* 12-1 ④~⑦ → Q14로 */
+ if(id==='Q13')return ['4','5','6','7'].indexOf(answers.Q12)>=0;             /* Q12 ④~⑦ → Q14로 */
  if(id==='F1_kind')return answers.F1_none==='1';
  if(id==='F2_kind')return answers.F2_none==='1';
  return false;
@@ -356,7 +358,7 @@ function question(q){
  if(skip(q.id))return '<div id="card_'+q.id+'" hidden></div>';
  var body=q.type==='grid'?gridTable(q):(q.type==='text'||q.type==='url')?textField(q):choiceList(q,q.id);
  if(q.id==='institution'&&MODE==='test')body+='<p class="testhint">[시험 운영] 시험 응답은 대학명 대신 <b>SSUTEST</b>를 입력해도 됩니다.</p>';
- return '<section class="'+cls+'" id="card_'+q.id+'"><h3>'+titleHtml(q)+'</h3>'+(q.help?'<div class="help">'+prose(q.help)+'</div>':'')+(q.sub?subHtml(q):'')+body+exNote(q)+(q.after?'<div class="help after">'+prose(q.after)+'</div>':'')+'</section>';
+ return '<section class="'+cls+'" id="card_'+q.id+'"><h3>'+titleHtml(q)+'</h3>'+(q.help?'<div class="help">'+prose(q.help)+'</div>':'')+(q.law?'<div class="law">'+q.law+'</div>':'')+(q.sub?subHtml(q):'')+body+exNote(q)+(q.after?'<div class="help after">'+prose(q.after)+'</div>':'')+'</section>';
 }
 function review(){
  var miss=0;pages.forEach(function(p,i){if(!p.review)miss+=unanswered(i).length;});
