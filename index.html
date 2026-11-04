@@ -7,7 +7,7 @@
 <title>대학입학전형 회피·배제 운영방식 및 개선 요구 조사</title>
 <script>
 /* 설정: Apps Script 웹앱의 /exec 주소 */
-var ENDPOINT = 'https://script.google.com/macros/s/AKfycbzCiyF_SYZqCDHDYms6iydLce74qt3IDY0K1jMeCse-ZlNFIztkoecZrOGPb9Ap_Oy3/exec';
+var ENDPOINT = 'https://script.google.com/macros/s/AKfycbzYmxis4bUBZkYxWTdk8Jh0AXGNoCezAo_4xTiqj-BVq0UeWuV60uhq7iPaS8y_xuAi/exec';
 </script>
 <script src="schema.js"></script>
 <style>
@@ -115,7 +115,8 @@ u.k{text-underline-offset:3px;text-decoration-thickness:1px}
 .grid{width:100%;border-collapse:collapse;border-top:2px solid #555;font-size:0.9333rem;margin-top:4px}
 .grid th,.grid td{border-bottom:1px solid var(--line);border-right:1px solid var(--line2);padding:6px 8px;text-align:center;vertical-align:middle}
 .grid th:last-child,.grid td:last-child{border-right:0}
-.grid thead th{background:var(--th);font-weight:600;font-size:0.8667rem}
+.grid thead th{background:var(--th);font-weight:600;font-size:0.8667rem;word-break:keep-all;line-height:1.4}
+.grid tbody th,.opt .tx,.q h3,.q h4.sub,.rule,.secbar h2,.info-table th{word-break:keep-all}
 .grid tbody th{text-align:left;font-weight:400;width:40%}
 .grid tr.group th{background:#fafafa;font-weight:600;font-size:0.8667rem}
 .grid tr.miss th,.grid tr.miss td{background:#fff3c4}
